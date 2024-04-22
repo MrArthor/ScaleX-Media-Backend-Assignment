@@ -2,9 +2,12 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
+const cookies = require("cookie-parser");
+
 
 const app = express();
 app.use(express.json());
+app.use(cookies());
 
 // Sample user data
 const users = [
@@ -23,11 +26,22 @@ app.post('/login', (req, res) => {
  if (!user) return res.status(401).send('Invalid credentials');
 
  const token = jwt.sign({ id: user.id, type: user.type }, secret, { expiresIn: '1h' });
+res.cookie('token', token, { httpOnly: true }); 
  res.send({ token });
 });
 
 // Home endpoint
 app.get('/home', (req, res) => {
+try {
+   const token = req.cookies.token;
+   if (!token) return res.status(403).send('A token is required for authentication');
+        const decoded = jwt.verify(token, secret);
+      req.user = users.find(u => u.id === decoded.id);
+      }
+      catch (err) {
+         res.status(401).send('Invalid Token');
+         }
+   
  const { type } = req.user;
  let books = fs.readFileSync(path.join(__dirname, 'regularUser.csv'), 'utf-8').split('\n');
 
